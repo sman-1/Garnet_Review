@@ -1220,29 +1220,26 @@ def add_review(course_id):
         author      = request.form.get('author', '').strip() or 'Anonymous'
         combined    = ' '.join([title, review_text, advice, author])
 
-        # Count how many profane words are in the combined text
-        profane_count = sum(1 for word in combined.split() if profanity.contains_profanity(word))
-
-        # Block submission if too many violations (more than 2 bad words)
-        if profane_count > 2:
+        # Block submission if any profanity is detected
+        if profanity.contains_profanity(combined):
             return redirect(url_for('add_review', course_id=course_id,
                 error='Your review contains inappropriate language and could not be submitted. Please keep it respectful.'))
 
-        # Otherwise censor any bad words and allow submission
+        # All clean — save the review as-is
         review = Review(
             course_id=course_id,
-            author=profanity.censor(author),
+            author=author,
             grade_level=request.form.get('grade_level', ''),
             grade_earned=request.form.get('grade_earned', ''),
             semester=request.form.get('semester', ''),
-            title=profanity.censor(title),
+            title=title,
             overall=int(request.form['overall']),
             difficulty=int(request.form['difficulty']),
             teacher_rating=int(request.form['teacher_rating']),
             workload=int(request.form['workload']),
             would_recommend=request.form.get('would_recommend') == 'yes',
-            review_text=profanity.censor(review_text),
-            advice=profanity.censor(advice),
+            review_text=review_text,
+            advice=advice,
             materials=', '.join(materials_list) if materials_list else request.form.get('materials_other', '').strip(),
         )
         db.session.add(review)
@@ -1354,9 +1351,27 @@ def seed_data():
 
 
 
+def purge_inappropriate_reviews():
+    """Delete any existing reviews that contain profanity."""
+    all_reviews = Review.query.all()
+    deleted = 0
+    for review in all_reviews:
+        combined = ' '.join(filter(None, [
+            review.title or '',
+            review.review_text or '',
+            review.advice or '',
+            review.author or '',
+        ]))
+        if profanity.contains_profanity(combined):
+            db.session.delete(review)
+            deleted += 1
+    if deleted:
+        db.session.commit()
+
 with app.app_context():
     db.create_all()
     seed_data()
+    purge_inappropriate_reviews()
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5050))
