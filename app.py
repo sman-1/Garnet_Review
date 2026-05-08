@@ -1,8 +1,11 @@
 from flask import Flask, render_template, request, redirect, url_for, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from jinja2 import DictLoader
+from better_profanity import profanity
 from datetime import datetime
 import os
+
+profanity.load_censor_words()
 
 # ─── Templates ────────────────────────────────────────────────────────────────
 
@@ -680,6 +683,13 @@ ADD_REVIEW_HTML = """{% extends "base.html" %}
     <div class="w-16"></div>
   </header>
 
+  {% if error %}
+  <div class="mb-6 rounded-lg border-2 border-red-400 bg-red-50 px-5 py-4 flex items-start gap-3">
+    <svg class="text-red-500 mt-0.5 flex-shrink-0" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+    <p class="text-sm font-bold text-red-700">{{ error }}</p>
+  </div>
+  {% endif %}
+
   <div class="mb-10">
     <h1 class="text-4xl font-black mb-1 tracking-tighter">Rate a Course</h1>
     <p class="text-lg text-on-surface/60 font-medium">Reviewing <strong class="text-on-surface">{{ course.name }}</strong></p>
@@ -1199,22 +1209,40 @@ def add_course():
 @app.route('/course/<int:course_id>/review', methods=['GET', 'POST'])
 def add_review(course_id):
     course = Course.query.get_or_404(course_id)
+    error = request.args.get('error')
     if request.method == 'POST':
         materials_list = request.form.getlist('materials')
+
+        # Fields to moderate
+        title       = request.form.get('title', '').strip()
+        review_text = request.form.get('review_text', '').strip()
+        advice      = request.form.get('advice', '').strip()
+        author      = request.form.get('author', '').strip() or 'Anonymous'
+        combined    = ' '.join([title, review_text, advice, author])
+
+        # Count how many profane words are in the combined text
+        profane_count = sum(1 for word in combined.split() if profanity.contains_profanity(word))
+
+        # Block submission if too many violations (more than 2 bad words)
+        if profane_count > 2:
+            return redirect(url_for('add_review', course_id=course_id,
+                error='Your review contains inappropriate language and could not be submitted. Please keep it respectful.'))
+
+        # Otherwise censor any bad words and allow submission
         review = Review(
             course_id=course_id,
-            author=request.form.get('author', '').strip() or 'Anonymous',
+            author=profanity.censor(author),
             grade_level=request.form.get('grade_level', ''),
             grade_earned=request.form.get('grade_earned', ''),
             semester=request.form.get('semester', ''),
-            title=request.form.get('title', '').strip(),
+            title=profanity.censor(title),
             overall=int(request.form['overall']),
             difficulty=int(request.form['difficulty']),
             teacher_rating=int(request.form['teacher_rating']),
             workload=int(request.form['workload']),
             would_recommend=request.form.get('would_recommend') == 'yes',
-            review_text=request.form.get('review_text', '').strip(),
-            advice=request.form.get('advice', '').strip(),
+            review_text=profanity.censor(review_text),
+            advice=profanity.censor(advice),
             materials=', '.join(materials_list) if materials_list else request.form.get('materials_other', '').strip(),
         )
         db.session.add(review)
@@ -1222,7 +1250,7 @@ def add_review(course_id):
         return redirect(url_for('course_detail', course_id=course_id))
     return render_template('add_review.html', course=course,
         grade_levels=GRADE_LEVELS, grades_earned=GRADES_EARNED,
-        semesters=SEMESTERS, materials_options=MATERIALS_OPTIONS)
+        semesters=SEMESTERS, materials_options=MATERIALS_OPTIONS, error=error)
 
 
 @app.route('/review/<int:review_id>/like', methods=['POST'])
