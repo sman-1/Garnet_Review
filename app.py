@@ -1324,66 +1324,6 @@ def seed_data():
     db.session.add_all(courses)
     db.session.commit()
 
-    c = {c.code: c for c in Course.query.all()}
-
-    reviews = [
-        Review(course_id=c['0341'].id, author='Anonymous', grade_level='12th Grade', grade_earned='A-',
-               semester='Fall 2023', title='Brutal but worth every second.',
-               overall=5, difficulty=5, teacher_rating=5, workload=5, would_recommend=True,
-               review_text='This is the hardest math class at RHS and it is not close. You will spend hours on homework every single night. But if you put in the work, the AP exam feels manageable. The teacher is incredible — she explains things three different ways until it clicks.',
-               advice="Start your FRQ practice in January. Do every single practice exam the College Board has posted. Form a study group.",
-               materials="TI-84 graphing calculator (required), AP Calculus BC Prep book (Barron's is great)", likes=47),
-        Review(course_id=c['0341'].id, author='MathNerd22', grade_level='12th Grade', grade_earned='B+',
-               semester='Spring 2024', title='Humbling but rewarding.',
-               overall=4, difficulty=5, teacher_rating=4, workload=5, would_recommend=True,
-               review_text='Scored a 4 on the AP exam after barely surviving the year. The pace is relentless — do not fall behind because catching up is nearly impossible. That said, I feel genuinely prepared for college math.',
-               advice='Do not skip the textbook readings. Buy a prep book early. Form a study group in September, not April.',
-               materials="TI-84 calculator, Larson Calculus textbook, Barron's prep book", likes=31),
-        Review(course_id=c['0118'].id, author='JournalWriter', grade_level='11th Grade', grade_earned='A',
-               semester='Fall 2023', title='Changed how I think and write.',
-               overall=5, difficulty=3, teacher_rating=5, workload=4, would_recommend=True,
-               review_text='AP Lang is the most intellectually engaging class I have taken at RHS. You read real, beautiful nonfiction and then have to write about it analytically. The teacher pushes you hard but is endlessly supportive.',
-               advice='Read every assigned book seriously. Start your out-of-class papers at least a week early — these are not papers you can rush.',
-               materials='Assigned books (buy early), annotation supplies, reading log notebook', likes=38),
-        Review(course_id=c['0386'].id, author='FuturePreMed', grade_level='12th Grade', grade_earned='A-',
-               semester='Spring 2024', title='Intense, but Dr. Patel makes it click.',
-               overall=4, difficulty=5, teacher_rating=5, workload=5, would_recommend=True,
-               review_text='Six hours a week outside of class is not an exaggeration — I spent more time on AP Bio than my other four classes combined. The material is fascinating though and the labs are genuinely fun.',
-               advice='Read the Campbell textbook every night. Memorize vocab using Anki. Labs count a lot — take them seriously.',
-               materials='Campbell Biology 12th Ed. (required), Anki flashcard app, lab notebook', likes=29),
-        Review(course_id=c['0222'].id, author='HistoryBuff', grade_level='11th Grade', grade_earned='B+',
-               semester='Fall 2023', title="Henderson's review sessions are genuinely legendary.",
-               overall=4, difficulty=5, teacher_rating=5, workload=5, would_recommend=True,
-               review_text='Heavy workload but absolutely worth it. Henderson is intense but his review sessions are the best thing RHS offers. Be prepared to read a chapter a night. The DBQ practices are brutal at first but you get used to the format quickly.',
-               advice='Start DBQ practice early — do not wait until April. Outline every single LEQ prompt in the AMSCO book.',
-               materials='AMSCO AP US History, DBQ Project supplementary materials, lots of colored pens for annotating', likes=24),
-        Review(course_id=c['0260'].id, author='Psych101Fan', grade_level='11th Grade', grade_earned='A',
-               semester='Spring 2024', title='Loved Jenkins. Tons of vocab though.',
-               overall=5, difficulty=3, teacher_rating=5, workload=3, would_recommend=True,
-               review_text="If you get Jenkins, you're in for a treat. He makes the material super engaging. Be prepared to memorize a TON of vocabulary — flashcards are your best friend. Do not fall behind on the reading.",
-               advice="Barron's AP Psychology review book is incredibly helpful. Start vocab flashcards week one.",
-               materials="Myers' Psychology for the AP Course (3rd Ed), Barron's AP Psych Flashcards, 3-ring binder", likes=41),
-        Review(course_id=c['0348'].id, author='CodeNerd', grade_level='10th Grade', grade_earned='A+',
-               semester='Fall 2023', title='Best class at RHS for aspiring developers.',
-               overall=5, difficulty=2, teacher_rating=5, workload=2, would_recommend=True,
-               review_text='Mrs. Davis is incredibly supportive. The class moves fast but the material is genuinely interesting. You build real projects and learn how the internet works, how data is used, and how to think computationally.',
-               advice='Do all the daily assignments — they are quick and they add up to a huge chunk of your grade.',
-               materials='Just a laptop — everything is online', likes=19),
-        Review(course_id=c['0371'].id, author='ChemEnjoyer', grade_level='10th Grade', grade_earned='B',
-               semester='Fall 2023', title='Harder than AP Chem at some schools.',
-               overall=4, difficulty=5, teacher_rating=4, workload=5, would_recommend=True,
-               review_text='Do not take this class expecting it to be easy just because it says Honors and not AP. The lab reports alone take two hours each. But if you push through you will be extremely well prepared for AP Chemistry next year.',
-               advice='Do every practice problem in the textbook. Lab reports matter a lot — spend real time on your conclusions.',
-               materials='Chemistry: Matter and Change textbook, lab notebook (composition book), scientific calculator', likes=22),
-        Review(course_id=c['0130'].id, author='LitLover', grade_level='12th Grade', grade_earned='A',
-               semester='Spring 2024', title='Writing-intensive but transformative.',
-               overall=5, difficulty=4, teacher_rating=5, workload=4, would_recommend=True,
-               review_text='AP Lit is incredible if you love reading and writing. You become a genuinely better writer over the course of the year. The discussions are some of the best intellectual conversations I have had in high school.',
-               advice='Read every assigned book carefully — she tests on details. Revise every essay at least twice before submitting.',
-               materials="All assigned novels (buy them early in summer), annotation tabs, writer's notebook", likes=33),
-    ]
-    db.session.add_all(reviews)
-    db.session.commit()
 
 
 with app.app_context():
