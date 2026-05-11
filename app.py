@@ -3,9 +3,76 @@ from flask_sqlalchemy import SQLAlchemy
 from jinja2 import DictLoader
 from better_profanity import profanity
 from datetime import datetime
+import anthropic
+import json
 import os
 
 profanity.load_censor_words()
+
+
+def moderate_review(course_name, author, title, review_text, advice):
+    """Use Claude AI to check if a review is appropriate and on-topic."""
+    api_key = os.environ.get('ANTHROPIC_API_KEY')
+
+    # Always run the basic profanity filter first
+    combined = ' '.join(filter(None, [author, title, review_text, advice]))
+    if profanity.contains_profanity(combined):
+        return False, 'Your review contains inappropriate language. Please keep it respectful.'
+
+    # If no API key, stop here
+    if not api_key:
+        return True, None
+
+    try:
+        client = anthropic.Anthropic(api_key=api_key)
+        submission = f"""
+Course being reviewed: {course_name}
+Reviewer nickname: {author}
+Review title: {title}
+Review body: {review_text}
+Advice for future students: {advice}
+""".strip()
+
+        message = client.messages.create(
+            model='claude-3-5-haiku-20241022',
+            max_tokens=150,
+            messages=[{
+                'role': 'user',
+                'content': f"""You are a strict content moderator for a high school course review website called Garnet Network. Students review classes at Rye High School.
+
+REJECT the review if it:
+- Contains any profanity, slurs, or vulgar language
+- Personally attacks, mocks, or insults a teacher in a mean-spirited or disrespectful way
+- Makes inappropriate or personal comments about a teacher's appearance, personal life, or character
+- Is completely off-topic (not about the course experience, difficulty, workload, teaching quality, or advice for future students)
+- Contains harassment, bullying, threats, or hate speech
+- Is spam, gibberish, or clearly fake
+- Contains personal information about any individual
+- Is sexually suggestive or violent
+
+ALLOW the review if it:
+- Gives honest, constructive feedback about the course (even if negative)
+- Discusses teaching style, workload, difficulty, or materials respectfully
+- Offers genuine advice for future students
+- Critiques a teacher's teaching methods respectfully (not their character)
+
+Respond with ONLY valid JSON, no other text:
+{{"allowed": true}} or {{"allowed": false, "reason": "one sentence explanation shown to the student"}}
+
+Review to evaluate:
+{submission}"""
+            }]
+        )
+
+        result = json.loads(message.content[0].text.strip())
+        if result.get('allowed'):
+            return True, None
+        else:
+            return False, result.get('reason', 'Your review was flagged as inappropriate or off-topic.')
+
+    except Exception:
+        # If AI check fails, fall back to profanity filter result (already passed)
+        return True, None
 
 # ─── Templates ────────────────────────────────────────────────────────────────
 
@@ -1218,12 +1285,11 @@ def add_review(course_id):
         review_text = request.form.get('review_text', '').strip()
         advice      = request.form.get('advice', '').strip()
         author      = request.form.get('author', '').strip() or 'Anonymous'
-        combined    = ' '.join([title, review_text, advice, author])
 
-        # Block submission if any profanity is detected
-        if profanity.contains_profanity(combined):
-            return redirect(url_for('add_review', course_id=course_id,
-                error='Your review contains inappropriate language and could not be submitted. Please keep it respectful.'))
+        # Run AI moderation
+        allowed, reason = moderate_review(course.name, author, title, review_text, advice)
+        if not allowed:
+            return redirect(url_for('add_review', course_id=course_id, error=reason))
 
         # All clean — save the review as-is
         review = Review(
