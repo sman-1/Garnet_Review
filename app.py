@@ -3,76 +3,39 @@ from flask_sqlalchemy import SQLAlchemy
 from jinja2 import DictLoader
 from better_profanity import profanity
 from datetime import datetime
-import anthropic
-import json
 import os
 
 profanity.load_censor_words()
 
+_BANNED_WORDS_PATH = os.path.join(os.path.dirname(__file__), 'banned_words.txt')
+if os.path.exists(_BANNED_WORDS_PATH):
+    with open(_BANNED_WORDS_PATH) as _f:
+        _custom_words = [w.strip() for w in _f if w.strip()]
+    profanity.add_censor_words(_custom_words)
+
+
+def _contains_banned_phrase(text):
+    import re
+    lowered = text.lower()
+    with open(_BANNED_WORDS_PATH) as f:
+        for phrase in f:
+            phrase = phrase.strip()
+            if not phrase:
+                continue
+            if ' ' in phrase:
+                if phrase in lowered:
+                    return True
+            else:
+                if re.search(r'\b' + re.escape(phrase) + r'\b', lowered):
+                    return True
+    return False
+
 
 def moderate_review(course_name, author, title, review_text, advice):
-    """Use Claude AI to check if a review is appropriate and on-topic."""
-    api_key = os.environ.get('ANTHROPIC_API_KEY')
-
-    # Always run the basic profanity filter first
     combined = ' '.join(filter(None, [author, title, review_text, advice]))
-    if profanity.contains_profanity(combined):
+    if profanity.contains_profanity(combined) or _contains_banned_phrase(combined):
         return False, 'Your review contains inappropriate language. Please keep it respectful.'
-
-    # If no API key, stop here
-    if not api_key:
-        return True, None
-
-    try:
-        client = anthropic.Anthropic(api_key=api_key)
-        submission = f"""
-Course being reviewed: {course_name}
-Reviewer nickname: {author}
-Review title: {title}
-Review body: {review_text}
-Advice for future students: {advice}
-""".strip()
-
-        message = client.messages.create(
-            model='claude-3-5-haiku-20241022',
-            max_tokens=150,
-            messages=[{
-                'role': 'user',
-                'content': f"""You are a strict content moderator for a high school course review website called Garnet Network. Students review classes at Rye High School.
-
-REJECT the review if it:
-- Contains any profanity, slurs, or vulgar language
-- Personally attacks, mocks, or insults a teacher in a mean-spirited or disrespectful way
-- Makes inappropriate or personal comments about a teacher's appearance, personal life, or character
-- Is completely off-topic (not about the course experience, difficulty, workload, teaching quality, or advice for future students)
-- Contains harassment, bullying, threats, or hate speech
-- Is spam, gibberish, or clearly fake
-- Contains personal information about any individual
-- Is sexually suggestive or violent
-
-ALLOW the review if it:
-- Gives honest, constructive feedback about the course (even if negative)
-- Discusses teaching style, workload, difficulty, or materials respectfully
-- Offers genuine advice for future students
-- Critiques a teacher's teaching methods respectfully (not their character)
-
-Respond with ONLY valid JSON, no other text:
-{{"allowed": true}} or {{"allowed": false, "reason": "one sentence explanation shown to the student"}}
-
-Review to evaluate:
-{submission}"""
-            }]
-        )
-
-        result = json.loads(message.content[0].text.strip())
-        if result.get('allowed'):
-            return True, None
-        else:
-            return False, result.get('reason', 'Your review was flagged as inappropriate or off-topic.')
-
-    except Exception:
-        # If AI check fails, fall back to profanity filter result (already passed)
-        return True, None
+    return True, None
 
 # ─── Templates ────────────────────────────────────────────────────────────────
 
